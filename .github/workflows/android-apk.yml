@@ -137,8 +137,16 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           strip() { sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
-          { tail -n 70 /tmp/build.log 2>/dev/null; echo '--- flutter doctor ---'; sed -n '1,15p' /tmp/doctor.txt 2>/dev/null; } \
-            | strip > /tmp/err.txt || true
+          {
+            echo '--- كل أخطاء البناء ---'
+            grep -nE "Error:|error:|isn't defined|What went wrong|Execution failed" /tmp/build.log 2>/dev/null | head -80
+            echo '--- آخر 25 سطراً ---'
+            tail -n 25 /tmp/build.log 2>/dev/null
+          } | strip > /tmp/err.txt || true
+          {
+            echo '--- flutter analyze ---'
+            (cd mobile && flutter analyze 2>&1 | tail -n 50) | strip
+          } >> /tmp/err.txt || true
           { echo '### فشل بناء APK (تشخيص مؤقت)'; echo '```'; cat /tmp/err.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$PR_NUMBER" ]; then
             { echo '### فشل بناء APK — تشخيص مؤقت داخل الـ CI'; echo '```'; cat /tmp/err.txt; echo '```'; } \

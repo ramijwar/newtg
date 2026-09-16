@@ -361,6 +361,7 @@ final class ManualPaymentPage extends StatefulWidget {
 
 final class _ManualPaymentPageState extends State<ManualPaymentPage> {
   final _reference = TextEditingController();
+  final _paymentNote = TextEditingController();
   XFile? _receipt;
   bool _submitting = false;
 
