@@ -1,0 +1,122 @@
+# بناء APK تجريبي (debug) لتطبيق «تجارتي» عبر GitHub Actions.
+#
+# التشغيل يدوي فقط (لتوفير دقائق Actions):
+#   تبويب Actions ← «Android APK (Debug)」 ← Run workflow ← Run workflow
+# ثم نزّل الملف من قسم Artifacts في صفحة التشغيلة.
+#
+# المتطلبات المثبّتة هنا مأخوذة من المشروع نفسه:
+#   Flutter 3.47.2   (mobile/.metadata + mobile/pubspec.lock: flutter >=3.44.0, dart >=3.13.2)
+#   JDK 17           (mobile/android/app/build.gradle.kts: VERSION_17)
+#   Gradle 9.3.1     (mobile/android/gradle/wrapper/gradle-wrapper.properties)
+#   AGP 9.1.0 / Kotlin 2.4.0 (mobile/android/settings.gradle.kts)
+name: Android APK (Debug)
+
+run-name: "APK debug · Flutter ${{ inputs.flutter_version }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      flutter_version:
+        description: "إصدار Flutter المستخدم في البناء"
+        required: false
+        type: string
+        default: "3.47.2"
+      split_per_abi:
+        description: "APK مستقل لكل معمارية (arm64-v8a / armeabi-v7a / x86_64) بدل ملف واحد — أصغر حجماً على الهاتف"
+        required: false
+        type: boolean
+        default: false
+      api_base_url:
+        description: "API_BASE_URL الذي يُمرَّر عبر --dart-define"
+        required: false
+        type: string
+        default: "https://t3lam.site/s_api/api/v1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-debug-${{ github.ref }}
+  # إلغِ التشغيلة الجارية إذا أطلقنا واحدة جديدة (بناء يدوي، لا يوجد ما يُنتظر).
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      # يُترجَم إلى علم فارغ أو --split-per-abi حسب الاختيار في نموذج التشغيل.
+      SPLIT_FLAG: ${{ inputs.split_per_abi == true && '--split-per-abi' || '' }}
+      API_BASE_URL: ${{ inputs.api_base_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          # يُخبّئ ~/.gradle (كلا الحزم وتوزيعات الـ wrapper) بين التشغيلات.
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ inputs.flutter_version }}
+          channel: stable
+          # يخبّئ كاش pub اعتماداً على بصمة mobile/pubspec.lock.
+          cache: true
+
+      - name: Toolchain versions
+        run: |
+          flutter --version
+          java -version
+          echo "ANDROID_HOME=${ANDROID_HOME:-غير مضبوط}"
+
+      - name: Accept Android SDK licenses
+        # بدونها يرفض Gradle تنزيل مكوّنات SDK الناقصة (platform/build-tools).
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$sdkmanager" ]; then
+            yes | "$sdkmanager" --licenses >/dev/null 2>&1 || true
+          fi
+          flutter config --no-analytics >/dev/null 2>&1 || true
+
+      - name: flutter pub get
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Build debug APK
+        working-directory: mobile
+        # ملاحظة: gradlew و gradle-wrapper.jar غير موجودين في المستودع لأن
+        # .gitignore الخاص بـ Flutter يستثنيهما؛ أداة flutter تحقن النسخة
+        # المطابقة تلقائياً قبل استدعاء Gradle، فلا حاجة لرفعهما يدوياً.
+        run: |
+          set -e
+          flutter build apk --debug $SPLIT_FLAG \
+            --dart-define=API_BASE_URL="$API_BASE_URL"
+
+      - name: List artifacts
+        working-directory: mobile/build/app/outputs/flutter-apk
+        run: |
+          set -e
+          ls -l ./*.apk
+          {
+            printf '| الملف | الحجم |\n|---|---|\n'
+            for f in ./*.apk; do
+              printf '| %s | %s |\n' "$(basename "$f")" "$(du -h "$f" | cut -f1)"
+            done
+            printf '\nرابط الـ API في هذا البناء: `%s`\n' "$API_BASE_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tijarti-android-debug-${{ github.run_number }}
+          path: mobile/build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+          retention-days: 30

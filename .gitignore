@@ -1,0 +1,19 @@
+# أنظمة التشغيل / المحررات
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# مخارج البناء على مستوى المستودع
+/build/
+/out/
+
+# أسرار التوقيع — لا تُرفع أبداً (انظر BUILD_APK_AR.md)
+*.jks
+*.keystore
+key.properties
+
+# أدوات فحص الجودة
+coverage/
+.eslintcache

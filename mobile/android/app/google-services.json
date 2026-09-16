@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "550016126308",
+    "project_id": "tjarti-2d492",
+    "storage_bucket": "tjarti-2d492.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:550016126308:android:eab3f4004c2e499abcfe71",
+        "android_client_info": {
+          "package_name": "com.tijarti.tijarti_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwwBKyef-IySwCzsnBf6F2EVn-d5tEiFc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
