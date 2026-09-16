@@ -11,7 +11,7 @@
 #   AGP 9.1.0 / Kotlin 2.4.0 (mobile/android/settings.gradle.kts)
 name: Android APK (Debug)
 
-run-name: "APK debug · Flutter ${{ inputs.flutter_version }}"
+run-name: "APK debug · Flutter ${{ inputs.flutter_version || '3.47.2' }}"
 
 on:
   workflow_dispatch:
@@ -32,8 +32,15 @@ on:
         type: string
         default: "https://t3lam.site/s_api/api/v1"
 
+  # TEMP-VERIFY — يُحذف بعد أول تشغيلة ناجحة؛ التشغيل النهائي يبقى يدوياً فقط.
+  pull_request:
+    paths:
+      - ".github/workflows/android-apk.yml"
+      - "mobile/**"
+
 permissions:
   contents: read
+
 
 concurrency:
   group: android-apk-debug-${{ github.ref }}
@@ -49,7 +56,7 @@ jobs:
     env:
       # يُترجَم إلى علم فارغ أو --split-per-abi حسب الاختيار في نموذج التشغيل.
       SPLIT_FLAG: ${{ inputs.split_per_abi == true && '--split-per-abi' || '' }}
-      API_BASE_URL: ${{ inputs.api_base_url }}
+      API_BASE_URL: ${{ inputs.api_base_url || 'https://t3lam.site/s_api/api/v1' }}
 
     steps:
       - name: Checkout
@@ -66,7 +73,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ inputs.flutter_version }}
+          flutter-version: ${{ inputs.flutter_version || '3.47.2' }}
           channel: stable
           # يخبّئ كاش pub اعتماداً على بصمة mobile/pubspec.lock.
           cache: true

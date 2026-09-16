@@ -3,6 +3,17 @@
 الـ workflow في `.github/workflows/android-apk.yml` يبني **APK تجريبي (debug)** على
 خادم GitHub، وينزّلك الملف كـ Artifact. لا تحتاج Android SDK ولا Flutter على جهازك.
 
+## 0) خطوة إلزامية قبل أول تشغيل
+
+GitHub يفعّل زر **Run workflow** فقط إذا كان ملف الـ workflow موجوداً على **الفرع الافتراضي**
+(`main`). لذا يجب الدمج إلى `main` أولاً — أو نسخ `.github/` و `mobile/` إليه.
+
+```bash
+# بعد وجود الملف على main، يمكن تشغيل البناء من أي فرع مع اختبار نسخة ذلك الفرع:
+gh workflow run android-apk.yml --ref arena/01a0a95c-newtg
+# أو من الواجهة: Actions ← Android APK (Debug) ← Run workflow ← اختيار الفرع
+```
+
 ## 1) التشغيل
 
 1. ارفع الكود على فرع فيه الملف `.github/workflows/android-apk.yml`.
