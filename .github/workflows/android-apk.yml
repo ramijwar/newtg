@@ -76,7 +76,7 @@ jobs:
           flutter --version
           java -version
           echo "ANDROID_HOME=${ANDROID_HOME:-غير مضبوط}"
-          ls "$ANDROID_HOME/platforms" 2>/dev/null | tr '\n' ' '
+          ls "$ANDROID_HOME/platforms" 2>/dev/null | tr '\n' ' ' || true
 
       - name: Accept Android SDK licenses
         # بدونها يرفض Gradle تنزيل مكوّنات SDK الناقصة (platform/build-tools/ndk).
