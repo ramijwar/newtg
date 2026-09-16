@@ -32,15 +32,8 @@ on:
         type: string
         default: "https://t3lam.site/s_api/api/v1"
 
-  # TEMP-VERIFY — يُحذف بعد أول تشغيلة ناجحة؛ التشغيل النهائي يبقى يدوياً فقط.
-  pull_request:
-    paths:
-      - ".github/workflows/android-apk.yml"
-      - "mobile/**"
-
 permissions:
   contents: read
-  pull-requests: write # TEMP-VERIFY
 
 concurrency:
   group: android-apk-debug-${{ github.ref }}
@@ -83,8 +76,7 @@ jobs:
           flutter --version
           java -version
           echo "ANDROID_HOME=${ANDROID_HOME:-غير مضبوط}"
-          flutter doctor -v > /tmp/doctor.txt 2>&1 || true
-          sed -n '1,20p' /tmp/doctor.txt || true
+          ls "$ANDROID_HOME/platforms" 2>/dev/null | tr '\n' ' '
 
       - name: Accept Android SDK licenses
         # بدونها يرفض Gradle تنزيل مكوّنات SDK الناقصة (platform/build-tools/ndk).
@@ -129,26 +121,3 @@ jobs:
           path: mobile/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
           retention-days: 30
-
-      - name: "TEMP-VERIFY: report failure"
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          strip() { sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
-          {
-            echo '--- كل أخطاء البناء ---'
-            grep -nE "Error:|error:|isn't defined|What went wrong|Execution failed" /tmp/build.log 2>/dev/null | head -80
-            echo '--- آخر 25 سطراً ---'
-            tail -n 25 /tmp/build.log 2>/dev/null
-          } | strip > /tmp/err.txt || true
-          {
-            echo '--- flutter analyze ---'
-            (cd mobile && flutter analyze 2>&1 | tail -n 50) | strip
-          } >> /tmp/err.txt || true
-          { echo '### فشل بناء APK (تشخيص مؤقت)'; echo '```'; cat /tmp/err.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          if [ -n "$PR_NUMBER" ]; then
-            { echo '### فشل بناء APK — تشخيص مؤقت داخل الـ CI'; echo '```'; cat /tmp/err.txt; echo '```'; } \
-              | gh pr comment "$PR_NUMBER" --body-file - || true
-          fi

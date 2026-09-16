@@ -3,6 +3,14 @@
 الـ workflow في `.github/workflows/android-apk.yml` يبني **APK تجريبي (debug)** على
 خادم GitHub، وينزّلك الملف كـ Artifact. لا تحتاج Android SDK ولا Flutter على جهازك.
 
+## حالة التحقق
+
+البناء مُختبَر فعلياً على GitHub Actions (تشغيلة ناجحة على PR #1): Flutter 3.47.2 + JDK 17 +
+Android SDK 37 على `ubuntu-latest`، والناتج Artifact باسم `tijarti-android-debug-<رقم>` (~86MB،
+لأن بناء debug يضم Dart VM؛ `split_per_abi` يخفضه، والإصدار النهائي أصغر بكثير).
+أثناء التحقق ظهرت علّة ترجمة في المصدر وأُصلحت: `orders_page.dart` كان يستخدم `_paymentNote`
+دون الإعلان عنه في `_ManualPaymentPageState`.
+
 ## 0) خطوة إلزامية قبل أول تشغيل
 
 GitHub يفعّل زر **Run workflow** فقط إذا كان ملف الـ workflow موجوداً على **الفرع الافتراضي**
