@@ -40,7 +40,7 @@ on:
 
 permissions:
   contents: read
-
+  pull-requests: write # TEMP-VERIFY
 
 concurrency:
   group: android-apk-debug-${{ github.ref }}
@@ -60,10 +60,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -83,9 +83,11 @@ jobs:
           flutter --version
           java -version
           echo "ANDROID_HOME=${ANDROID_HOME:-غير مضبوط}"
+          flutter doctor -v > /tmp/doctor.txt 2>&1 || true
+          sed -n '1,20p' /tmp/doctor.txt || true
 
       - name: Accept Android SDK licenses
-        # بدونها يرفض Gradle تنزيل مكوّنات SDK الناقصة (platform/build-tools).
+        # بدونها يرفض Gradle تنزيل مكوّنات SDK الناقصة (platform/build-tools/ndk).
         run: |
           sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           if [ -x "$sdkmanager" ]; then
@@ -103,9 +105,9 @@ jobs:
         # .gitignore الخاص بـ Flutter يستثنيهما؛ أداة flutter تحقن النسخة
         # المطابقة تلقائياً قبل استدعاء Gradle، فلا حاجة لرفعهما يدوياً.
         run: |
-          set -e
+          set -eo pipefail
           flutter build apk --debug $SPLIT_FLAG \
-            --dart-define=API_BASE_URL="$API_BASE_URL"
+            --dart-define=API_BASE_URL="$API_BASE_URL" 2>&1 | tee /tmp/build.log
 
       - name: List artifacts
         working-directory: mobile/build/app/outputs/flutter-apk
@@ -121,9 +123,24 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tijarti-android-debug-${{ github.run_number }}
           path: mobile/build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: "TEMP-VERIFY: report failure"
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          strip() { sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
+          { tail -n 70 /tmp/build.log 2>/dev/null; echo '--- flutter doctor ---'; sed -n '1,15p' /tmp/doctor.txt 2>/dev/null; } \
+            | strip > /tmp/err.txt || true
+          { echo '### فشل بناء APK (تشخيص مؤقت)'; echo '```'; cat /tmp/err.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$PR_NUMBER" ]; then
+            { echo '### فشل بناء APK — تشخيص مؤقت داخل الـ CI'; echo '```'; cat /tmp/err.txt; echo '```'; } \
+              | gh pr comment "$PR_NUMBER" --body-file - || true
+          fi
